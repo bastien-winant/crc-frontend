@@ -1,12 +1,7 @@
 import { Card, Wrap, Badge, Button, For, LinkBox, LinkOverlay } from "@chakra-ui/react"
 import { LuGithub } from "react-icons/lu"
 
-export default function ProjectCard() {
-	const title = "Live room Sofa"
-	const description = "This sofa is perfect for modern tropical spaces, baroque inspired spaces."
-	const techStack = ['Python', 'SQLMesh', 'PostgreSQL']
-	const githubUrl = "https://espn.com"
-
+export default function ProjectCard({title, description, techStack, githubUrl}) {
 	return (
 		<Card.Root size="md">
 			<Card.Header>
@@ -21,8 +16,6 @@ export default function ProjectCard() {
 				</Wrap>
 			</Card.Body>
 			<Card.Footer>
-				{/*<Button variant="solid" size="sm">Buy now</Button>*/}
-				{/*<Button variant="ghost" size="sm">Add to cart</Button>*/}
 				<LinkBox>
 					<Button variant="outline" size="sm">
 						<LuGithub />
