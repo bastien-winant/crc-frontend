@@ -1,11 +1,14 @@
 import Section from "@/components/section/index.js"
 import { Stack } from "@chakra-ui/react"
-import ProjectCard from "@/components/projects/ProjectCard.jsx";
+import ProjectCard from "@/components/projects/ProjectCard.jsx"
+import { useNavContext } from "@/contexts/navContext/NavContext.jsx"
 
 
 export default function Projects() {
+	const { projectsRef } = useNavContext()
+
 	return (
-		<Section>
+		<Section ref={projectsRef}>
 			<Section.Header>featured projects</Section.Header>
 			<Section.Body>
 				<Stack gap="4">

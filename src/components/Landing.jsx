@@ -1,8 +1,10 @@
 import Section from "@/components/section/index.js"
 import { Button, ButtonGroup, Heading, Stack, Text } from "@chakra-ui/react"
-
+import { useNavContext } from "@/contexts/navContext/NavContext.jsx"
 
 export default function Landing() {
+	const { projectsRef, scrollToRef } = useNavContext()
+
 	return (
 		<Section>
 			<Section.Body>
@@ -24,7 +26,7 @@ export default function Landing() {
 					</Text>
 					<ButtonGroup mt="6">
 						<Button variant="solid">Get in touch</Button>
-						<Button variant="outline">View projects</Button>
+						<Button variant="outline" onClick={() => scrollToRef(projectsRef)}>View projects</Button>
 					</ButtonGroup>
 				</Stack>
 			</Section.Body>

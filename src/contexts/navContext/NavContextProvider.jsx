@@ -3,10 +3,17 @@ import { useRef } from "react"
 
 export const NavContextProvider = ({children}) => {
 	const homeRef = useRef(null)
-	const aboutRef = useRef(null)
+	const contactRef = useRef(null)
 	const projectsRef = useRef(null)
 
+	const scrollToRef = (ref) => {
+		ref.current.scrollIntoView({
+			behavior: "smooth",
+			block: "start"
+		})
+	}
+
 	return (
-		<NavContext.Provider value={{ homeRef, aboutRef, projectsRef }}>{children}</NavContext.Provider>
+		<NavContext.Provider value={{ homeRef, contactRef, projectsRef, scrollToRef }}>{children}</NavContext.Provider>
 	)
 }
