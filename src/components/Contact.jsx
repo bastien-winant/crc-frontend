@@ -1,5 +1,7 @@
 import Section from "@/components/section/index.js"
-import { Card, DataList, Fieldset, Field, Input, Textarea, Button } from "@chakra-ui/react"
+import { Card, DataList, Fieldset, Field, Input, Textarea, Button, HStack, IconButton } from "@chakra-ui/react"
+import { FaGithub, FaXing } from "react-icons/fa6"
+
 
 export default function Contact() {
 	const info = [
@@ -17,15 +19,15 @@ export default function Contact() {
 					overflow="hidden"
 					size="md"
 				>
-					<Card.Body gap="4" borderWidth="thin">
+					<Card.Body gap="4">
 						<Card.Title>Email me</Card.Title>
 						<Fieldset.Root size="md">
 							<Fieldset.Content>
 								<Field.Root>
-									<Input name="email" type="email" placeholder="Email address" />
+									<Input name="email" type="email" size="md" placeholder="Email address" />
 								</Field.Root>
 								<Field.Root>
-									<Textarea h="36" size="md" resize="none" placeholder="Search the docs…" />
+									<Textarea h="36" size="md" resize="none" placeholder="Type your message…" />
 								</Field.Root>
 								<Button type="submit" alignSelf="flex-start" size="sm">
 									Send email
@@ -33,9 +35,9 @@ export default function Contact() {
 							</Fieldset.Content>
 						</Fieldset.Root>
 					</Card.Body>
-					<Card.Body gap="4" borderWidth="thin">
+					<Card.Body gap="4">
 						<Card.Title>Contact info</Card.Title>
-						<DataList.Root variant="bold">
+						<DataList.Root variant="bold" size="md">
 							{info.map((item) => (
 								<DataList.Item key={item.label}>
 									<DataList.ItemLabel>{item.label}</DataList.ItemLabel>
@@ -43,6 +45,22 @@ export default function Contact() {
 								</DataList.Item>
 							))}
 						</DataList.Root>
+						<HStack wrap="wrap" mt="2">
+							<IconButton
+								aria-label="Search database"
+								variant="outline"
+								size="md"
+							>
+								<FaGithub />
+							</IconButton>
+							<IconButton
+								aria-label="Search database"
+								variant="outline"
+								size="md"
+							>
+								<FaXing />
+							</IconButton>
+						</HStack>
 					</Card.Body>
 				</Card.Root>
 			</Section.Body>
