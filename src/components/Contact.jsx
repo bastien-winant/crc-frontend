@@ -1,5 +1,5 @@
 import Section from "@/components/section/index.js"
-import { Card, DataList, Stack, Fieldset, Field, Input, Textarea, Button } from "@chakra-ui/react"
+import { Card, DataList, Fieldset, Field, Input, Textarea, Button } from "@chakra-ui/react"
 
 export default function Contact() {
 	const info = [
@@ -10,42 +10,39 @@ export default function Contact() {
 
 	return (
 		<Section>
-			<Section.Header>contact</Section.Header>
+			<Section.Header>get in touch</Section.Header>
 			<Section.Body>
-				<Card.Root size="md">
-					<Card.Body gap="12">
-						<Stack>
-							<Card.Title>Contact info</Card.Title>
-							<DataList.Root variant="bold">
-								{info.map((item) => (
-									<DataList.Item key={item.label}>
-										<DataList.ItemLabel>{item.label}</DataList.ItemLabel>
-										<DataList.ItemValue>{item.value}</DataList.ItemValue>
-									</DataList.Item>
-								))}
-							</DataList.Root>
-						</Stack>
-						<Stack gap="2">
-							<Card.Title>Email</Card.Title>
-							<Fieldset.Root size="lg">
-								<Fieldset.HelperText>
-									Please provide your contact details below.
-								</Fieldset.HelperText>
-								<Fieldset.Content>
-									<Field.Root>
-										<Field.Label>Email address</Field.Label>
-										<Input name="email" type="email" />
-									</Field.Root>
-									<Field.Root>
-										<Field.Label>Email address</Field.Label>
-										<Textarea size="xl" resize="none" placeholder="Search the docs…" />
-									</Field.Root>
-									<Button type="submit" alignSelf="flex-start">
-										Submit
-									</Button>
-								</Fieldset.Content>
-							</Fieldset.Root>
-						</Stack>
+				<Card.Root
+					flexDirection={{ base: "column", md: "row" }}
+					overflow="hidden"
+					size="md"
+				>
+					<Card.Body gap="4" borderWidth="thin">
+						<Card.Title>Email me</Card.Title>
+						<Fieldset.Root size="md">
+							<Fieldset.Content>
+								<Field.Root>
+									<Input name="email" type="email" placeholder="Email address" />
+								</Field.Root>
+								<Field.Root>
+									<Textarea h="36" size="md" resize="none" placeholder="Search the docs…" />
+								</Field.Root>
+								<Button type="submit" alignSelf="flex-start" size="sm">
+									Send email
+								</Button>
+							</Fieldset.Content>
+						</Fieldset.Root>
+					</Card.Body>
+					<Card.Body gap="4" borderWidth="thin">
+						<Card.Title>Contact info</Card.Title>
+						<DataList.Root variant="bold">
+							{info.map((item) => (
+								<DataList.Item key={item.label}>
+									<DataList.ItemLabel>{item.label}</DataList.ItemLabel>
+									<DataList.ItemValue>{item.value}</DataList.ItemValue>
+								</DataList.Item>
+							))}
+						</DataList.Root>
 					</Card.Body>
 				</Card.Root>
 			</Section.Body>
