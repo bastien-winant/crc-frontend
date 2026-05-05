@@ -187,6 +187,16 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Read
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !GetAtt Bucket.Arn
+                  - !Sub ${Bucket.Arn}/*
 
   S3ToDynamoFunction:
     Type: AWS::Serverless::Function
