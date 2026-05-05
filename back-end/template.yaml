@@ -152,7 +152,7 @@ Resources:
       Architectures:
         - x86_64
       Events:
-        EventToFirehose:
+        ApiEvent:
           Type: Api
           Properties:
             Path: /log
