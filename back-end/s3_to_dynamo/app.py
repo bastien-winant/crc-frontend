@@ -29,7 +29,7 @@ def read_s3_object():
 
 
 def lambda_handler(event, context):
-	# print("Received event: " + json.dumps(event, indent=2))
+	print("Received event: " + json.dumps(event, indent=2))
 
 	try:
 		entry = read_s3_object()
