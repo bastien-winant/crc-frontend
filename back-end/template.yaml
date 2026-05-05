@@ -197,6 +197,10 @@ Resources:
                 Resource:
                   - !GetAtt Bucket.Arn
                   - !Sub ${Bucket.Arn}/*
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt DynamoDBTable.Arn
 
   S3ToDynamoFunction:
     Type: AWS::Serverless::Function
