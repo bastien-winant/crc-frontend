@@ -52,8 +52,7 @@ Resources:
   Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketNamePrefix: !Ref BucketPrefix
-      BucketNamespace: account-regional
+      BucketName: !Sub ${BucketPrefix}-${AWS::AccountId}-${AWS::Region}
 
   DeliveryStreamProcessingFunction:
     Type: AWS::Serverless::Function
@@ -119,33 +118,17 @@ Resources:
                 - ParameterName: LambdaArn
                   ParameterValue: !GetAtt DeliveryStreamProcessingFunction.Arn
 
-  EventToFirehoseFunctionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: FirehoseWrite
-          PolicyDocument:
-            Statement:
-              - Effect: Allow
-                Action:
-                  - firehose:PutRecord
-                  - firehose:PutRecordBatch
-                Resource: !GetAtt DeliveryStream.Arn
-
   EventToFirehoseFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Role: !GetAtt EventToFirehoseFunctionRole.Arn
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+          - Effect: Allow
+            Action:
+              - firehose:PutRecord
+              - firehose:PutRecordBatch
+            Resource: !GetAtt DeliveryStream.Arn
       CodeUri: event_to_firehose/
       Handler: app.lambda_handler
       Runtime: python3.14
@@ -174,43 +157,33 @@ Resources:
       TableName: !Ref DynamoTableName
       BillingMode: PAY_PER_REQUEST
 
-  S3ToDynamoFunctionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: S3Read
-          PolicyDocument:
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                Resource:
-                  - !GetAtt Bucket.Arn
-                  - !Sub ${Bucket.Arn}/*
-              - Effect: Allow
-                Action:
-                  - dynamodb:UpdateItem
-                Resource: !GetAtt DynamoDBTable.Arn
-
-  S3ToDynamoFunction:
+  S3ToDynamoDBFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Role: !GetAtt S3ToDynamoFunctionRole.Arn
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource:
+              - !Sub ${BucketPrefix}-${AWS::AccountId}-${AWS::Region}
+              - !Sub ${BucketPrefix}-${AWS::AccountId}-${AWS::Region}/*
+          - Effect: Allow
+            Action:
+              - dynamodb:UpdateItem
+            Resource: !GetAtt DynamoDBTable.Arn
       CodeUri: s3_to_dynamo/
       Handler: app.lambda_handler
       Runtime: python3.14
       Architectures:
         - x86_64
+      Events:
+        S3Event:
+          Type: S3
+          Properties:
+            Bucket: !Ref Bucket
+            Events: s3:ObjectCreated:*
 
 Outputs:
   BucketName:
@@ -233,9 +206,6 @@ Outputs:
   EventToFirehoseFunction:
     Description: "Event To Firehose Lambda Function ARN"
     Value: !GetAtt EventToFirehoseFunction.Arn
-  EventToFirehoseFunctionIamRole:
-    Description: "Implicit IAM Role created for Event To Firehose function"
-    Value: !GetAtt EventToFirehoseFunctionRole.Arn
 
   DynamoDBTableName:
     Description: DynamoDB table name
