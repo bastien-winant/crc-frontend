@@ -91,6 +91,8 @@ Resources:
       ExtendedS3DestinationConfiguration:
         BucketARN: !GetAtt Bucket.Arn
         RoleARN: !GetAtt DeliveryStreamRole.Arn
+        Prefix: "year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
+        ErrorOutputPrefix: "year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/!{firehose:error-output-type}/"
         BufferingHints:
           IntervalInSeconds: !Ref BufferingIntervalInSeconds
           SizeInMBs: !Ref BufferingSizeInMBs
