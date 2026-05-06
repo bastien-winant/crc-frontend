@@ -1,23 +1,19 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  back-end
+  cloud-resume-challenge-backend
 
-  Sample SAM Template for back-end
+  Sample SAM Template for cloud-resume-challenge-backend
 
 Globals:
   Function:
     Timeout: 3
 
 Parameters:
-  BucketPrefix:
-    Type: String
-    Description: Prefix for the S3 Bucket that contains visitor logs
-    Default: cloud-resume-visitor-logs
   DeliveryStreamName:
     Type: String
-    Description: Name of the Data Firehose that transforms and sends the logs to S3
-    Default: cloud-resume-visitor-log-stream
+    Description: Name of the Data Firehose that sends the logs to S3
+    Default: 'cloud-resume-visitor-log-stream'
   CompressionFormat:
     Type: String
     Description: Compression format for S3 files
@@ -43,21 +39,15 @@ Parameters:
     MinValue: 1
     MaxValue: 128
     Default: 5
-  DynamoTableName:
-    Type: String
-    Description: Name of the DynamoDB table that holds the formatted cloud resume visitor logs
-    Default: cloud-resume-visitor-logs
 
 Resources:
   Bucket:
     Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub ${BucketPrefix}-${AWS::AccountId}-${AWS::Region}
 
-  DeliveryStreamProcessingFunction:
+  EventProcessingFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: transform_log/
+      CodeUri: event_processing/
       Handler: app.lambda_handler
       Runtime: python3.14
       Architectures:
@@ -83,18 +73,15 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - s3:AbortMultipartUpload
-                  - s3:GetBucketLocation
-                  - s3:GetObject
-                  - s3:ListBucket
-                  - s3:ListBucketMultipartUploads
                   - s3:PutObject
                 Resource:
                   - !GetAtt Bucket.Arn
                   - !Sub ${Bucket.Arn}/*
               - Effect: Allow
-                Action: lambda:InvokeFunction
-                Resource: !GetAtt DeliveryStreamProcessingFunction.Arn
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt EventProcessingFunction.Arn
 
   DeliveryStream:
     Type: AWS::KinesisFirehose::DeliveryStream
@@ -108,27 +95,25 @@ Resources:
           IntervalInSeconds: !Ref BufferingIntervalInSeconds
           SizeInMBs: !Ref BufferingSizeInMBs
         CompressionFormat: !Ref CompressionFormat
-        Prefix: "year=!{timestamp:YYYY}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
-        ErrorOutputPrefix: "errors/!{firehose:error-output-type}/year=!{timestamp:YYYY}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
         ProcessingConfiguration:
           Enabled: True
           Processors:
             - Type: Lambda
               Parameters:
                 - ParameterName: LambdaArn
-                  ParameterValue: !GetAtt DeliveryStreamProcessingFunction.Arn
+                  ParameterValue: !GetAtt EventProcessingFunction.Arn
 
   EventToFirehoseFunction:
     Type: AWS::Serverless::Function
     Properties:
       Policies:
         - AWSLambdaBasicExecutionRole
-        - Statement:
-          - Effect: Allow
-            Action:
-              - firehose:PutRecord
-              - firehose:PutRecordBatch
-            Resource: !GetAtt DeliveryStream.Arn
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - firehose:PutRecord
+              Resource: !GetAtt DeliveryStream.Arn
       CodeUri: event_to_firehose/
       Handler: app.lambda_handler
       Runtime: python3.14
@@ -141,49 +126,22 @@ Resources:
             Path: /log
             Method: post
 
-  DynamoDBTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-        - AttributeName: epoch
-          KeyType: RANGE
-      AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-        - AttributeName: epoch
-          AttributeType: N
-      TableName: !Ref DynamoTableName
-      BillingMode: PAY_PER_REQUEST
-
-  S3ToDynamoDBFunction:
+  S3ToDynamoFunction:
     Type: AWS::Serverless::Function
     Properties:
       Policies:
         - AWSLambdaBasicExecutionRole
-        - Statement:
-          - Effect: Allow
-            Action:
-              - s3:GetObject
-            Resource:
-              - !Sub ${BucketPrefix}-${AWS::AccountId}-${AWS::Region}
-              - !Sub ${BucketPrefix}-${AWS::AccountId}-${AWS::Region}/*
-          - Effect: Allow
-            Action:
-              - dynamodb:UpdateItem
-            Resource: !GetAtt DynamoDBTable.Arn
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: !GetAtt Bucket.Arn
       CodeUri: s3_to_dynamo/
       Handler: app.lambda_handler
       Runtime: python3.14
       Architectures:
         - x86_64
-      Events:
-        S3Event:
-          Type: S3
-          Properties:
-            Bucket: !Ref Bucket
-            Events: s3:ObjectCreated:*
 
 Outputs:
   BucketName:
@@ -207,9 +165,6 @@ Outputs:
     Description: "Event To Firehose Lambda Function ARN"
     Value: !GetAtt EventToFirehoseFunction.Arn
 
-  DynamoDBTableName:
-    Description: DynamoDB table name
-    Value: !Ref DynamoTableName
-  DynamoDBTableArn:
-    Description: DynamoDB table ARN
-    Value: !GetAtt DynamoDBTable.Arn
+  S3ToDynamoFunction:
+    Description: "S3 To Dynamo Lambda Function ARN"
+    Value: !GetAtt S3ToDynamoFunction.Arn

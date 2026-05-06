@@ -29,16 +29,16 @@ class FirehoseClient:
 	"""
 
 	def __init__(self, config):
-		"""
-		Initialize the FirehoseClient.
+			"""
+			Initialize the FirehoseClient.
 
-		Args:
-			config (object): Configuration object with delivery stream name and region.
-		"""
-		self.config = config
-		self.delivery_stream_name = config.delivery_stream_name
-		self.region = config.region
-		self.firehose = boto3.client("firehose", region_name=self.region)
+			Args:
+				config (object): Configuration object with delivery stream name and region.
+			"""
+			self.config = config
+			self.delivery_stream_name = config.delivery_stream_name
+			self.region = config.region
+			self.firehose = boto3.client("firehose", region_name=self.region)
 
 	@backoff.on_exception(backoff.expo, Exception, max_tries=5, jitter=backoff.full_jitter)
 	def put_record(self, record: dict):
@@ -59,6 +59,7 @@ class FirehoseClient:
 		except Exception:
 			logger.info(f"Fail record: {record}.")
 			raise
+
 
 	def _create_record_entry(self, record: dict) -> dict:
 		"""
@@ -88,6 +89,21 @@ class FirehoseClient:
 		else:
 			logger.info(f"Fail record: {entry}")
 
+	def _log_batch_response(self, response: dict, batch_size: int):
+		"""
+		Log the batch response from Firehose.
+
+		Args:
+			response (dict): The response from the Firehose put_record_batch API call.
+			batch_size (int): The number of records in the batch.
+		"""
+		if response.get("FailedPutCount", 0) > 0:
+			logger.info(
+					f'Failed to send {response["FailedPutCount"]} records in batch of {batch_size}'
+			)
+		else:
+			logger.info(f"Successfully sent batch of {batch_size} records")
+
 
 def lambda_handler(event, context):
 	config = Config()
@@ -98,7 +114,7 @@ def lambda_handler(event, context):
 
 		return {
 			"statusCode": 200,
-			"body": json.dumps(response)
+			"body": json.dumps(response),
 		}
 	except Exception as e:
 		logger.info(f"Put record failed after retries and backoff: {e}")
