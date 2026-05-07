@@ -19,6 +19,7 @@ def lambda_handler(event, context):
 				'request_datetime': event['requestContext']['requestTimeEpoch'],
 				'ip_address': event['requestContext']['identity'].get('sourceIp'),
 				'user_agent': event['headers'].get('User-Agent'),
+				'referer': event['headers'].get('Referer'),
 				'desktop': event['headers'].get('CloudFront-Is-Desktop-Viewer'),
 				'mobile': event['headers'].get('CloudFront-Is-Mobile-Viewer'),
 				'smart_tv': event['headers'].get('CloudFront-Is-SmartTV-Viewer'),
