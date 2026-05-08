@@ -29,7 +29,7 @@ class KinesisStreamClient:
 
 	def __init__(self, config):
 		"""
-		:param kinesis_client: A Boto3 Kinesis client.
+		:param config (object): Configuration object with delivery stream name and region.
 		"""
 		self.config = config
 		self.name = config.name
@@ -49,7 +49,7 @@ class KinesisStreamClient:
 		"""
 		try:
 			response = self.kinesis_client.put_record(
-				StreamName=self.name, Data=json.dumps(data), PartitionKey=partition_key
+				StreamName=self.name, Data=json.dumps(data), PartitionKey=data['requestContext']['requestId']
 			)
 			logger.info(f"Put record in stream {self.name}.")
 		except ClientError:
@@ -65,10 +65,10 @@ def lambda_handler(event, context):
 	client = KinesisStreamClient(config)
 
 	try:
-		client.put_record(data=event, partition_key=config.name)
+		response = client.put_record(data=event, partition_key=config.name)
 		return {
 			"statusCode": 200,
-			"body": json.dumps(event),
+			"body": json.dumps(response),
 		}
 	except Exception as e:
 		logger.exception(f"Failed to write event to stream: {e}")
