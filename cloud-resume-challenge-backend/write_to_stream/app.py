@@ -22,24 +22,24 @@ class KinesisStream:
 
 
 	def put_record(self, data, partition_key):
-			"""
-			Puts data into the stream. The data is formatted as JSON before it is passed
-			to the stream.
+		"""
+		Puts data into the stream. The data is formatted as JSON before it is passed
+		to the stream.
 
-			:param data: The data to put in the stream.
-			:param partition_key: The partition key to use for the data.
-			:return: Metadata about the record, including its shard ID and sequence number.
-			"""
-			try:
-				response = self.kinesis_client.put_record(
-					StreamName=self.name, Data=json.dumps(data), PartitionKey=partition_key
-				)
-				logger.info("Put record in stream %s.", self.name)
-			except ClientError:
-				logger.exception("Couldn't put record in stream %s.", self.name)
-				raise
-			else:
-				return response
+		:param data: The data to put in the stream.
+		:param partition_key: The partition key to use for the data.
+		:return: Metadata about the record, including its shard ID and sequence number.
+		"""
+		try:
+			response = self.kinesis_client.put_record(
+				StreamName=self.name, Data=json.dumps(data), PartitionKey=partition_key
+			)
+			logger.info(f"Put record in stream {self.name}.")
+		except ClientError:
+			logger.exception(f"Couldn't put record in stream {self.name}.")
+			raise
+		else:
+			return response
 
 def lambda_handler(event, context):
 	print("Received event: " + json.dumps(event, indent=2))
