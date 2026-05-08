@@ -3,7 +3,6 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 
-
 class Config:
 	def __init__(self):
 		self.name = "cloud-resume-visitor-log-stream"
@@ -37,8 +36,7 @@ class KinesisStreamClient:
 		self.kinesis_client = boto3.client('kinesis', region_name=self.region)
 		self.stream_exists_waiter = self.kinesis_client.get_waiter("stream_exists")
 
-
-	def put_record(self, data, partition_key):
+	def put_record(self, data):
 		"""
 		Puts data into the stream. The data is formatted as JSON before it is passed
 		to the stream.
@@ -59,13 +57,11 @@ class KinesisStreamClient:
 			return response
 
 def lambda_handler(event, context):
-	print("Received event: " + json.dumps(event, indent=2))
-
 	config = Config()
 	client = KinesisStreamClient(config)
 
 	try:
-		response = client.put_record(data=event, partition_key=config.name)
+		response = client.put_record(data=event)
 		return {
 			"statusCode": 200,
 			"body": json.dumps(response),
