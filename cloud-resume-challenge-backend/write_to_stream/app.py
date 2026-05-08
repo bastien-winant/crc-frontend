@@ -4,21 +4,38 @@ import boto3
 from botocore.exceptions import ClientError
 
 
+class Config:
+	def __init__(self):
+		self.name = "cloud-resume-visitor-log-stream"
+		self.region = "eu-central-1"
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class KinesisStream:
-	"""Encapsulates a Kinesis stream."""
 
-	def __init__(self, kinesis_client):
+class KinesisStreamClient:
+	"""
+    AWS Kinesis Stream client to receive and send records.
+
+    Attributes:
+			config (object): Configuration object with delivery stream name and region.
+			kinesis_stream_name (str): Name of the Firehose delivery stream.
+			region (str): AWS region for Firehose and CloudWatch clients.
+			kinesis_client (boto3.client): Boto3 Kinesis client.
+			stream_exists_waiter (boto3.client): Boto3 Kinesis Stream client.
+    """
+
+	def __init__(self, config):
 		"""
 		:param kinesis_client: A Boto3 Kinesis client.
 		"""
-		self.kinesis_client = kinesis_client
-		self.name = None
-		self.details = None
-		self.stream_exists_waiter = kinesis_client.get_waiter("stream_exists")
+		self.config = config
+		self.name = config.name
+		self.region = config.region
+		self.kinesis_client = boto3.client('kinesis', region_name=self.region)
+		self.stream_exists_waiter = self.kinesis_client.get_waiter("stream_exists")
 
 
 	def put_record(self, data, partition_key):
@@ -44,11 +61,15 @@ class KinesisStream:
 def lambda_handler(event, context):
 	print("Received event: " + json.dumps(event, indent=2))
 
+	config = Config()
+	client = KinesisStreamClient(config)
+
 	try:
+		client.put_record(data=event, partition_key=config.name)
 		return {
 			"statusCode": 200,
 			"body": json.dumps(event),
 		}
 	except Exception as e:
-		logger.excep(f"Failed to write event to stream: {e}")
+		logger.exception(f"Failed to write event to stream: {e}")
 		raise e
