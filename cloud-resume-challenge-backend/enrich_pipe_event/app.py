@@ -8,16 +8,21 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def lambda_handler(event, context):
-	print("Received event: " + json.dumps(event, indent=2))
+	output = []
 
-	for record in event['Records']:
+	for record in event:
 		try:
-			logger.info(f"Processed Kinesis Event - EventID: {record['eventID']}")
-			record_data = base64.b64decode(record['kinesis']['data']).decode('utf-8')
-			print(f"Record Data: {record_data}")
-			# TODO: Do interesting work based on the new data
+			# decode the payload data
+			payload = base64.b64decode(record['data']).decode('utf-8')
+			data = json.loads(payload)
+
+			# Do custom processing on the payload here
+
+			record['data'] = base64.b64encode(json.dumps(data).encode('utf-8')).decode('utf-8')
+			output.append(record)
 		except Exception as e:
 			logger.exception(f"An error occurred {e}")
 			raise e
-	logger.info(f"Successfully processed {len(event['Records'])} records.")
 
+	logger.info(f"Successfully processed {len(event)} records.")
+	return output

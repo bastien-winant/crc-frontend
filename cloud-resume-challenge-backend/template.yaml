@@ -124,7 +124,9 @@ Resources:
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction
-                Resource: !GetAtt PipeEnrichFunction.Arn
+                Resource:
+                  - !GetAtt PipeEnrichFunction.Arn
+                  - !GetAtt DynamoWriteFunction.Arn
 
   Pipe:
     Type: AWS::Pipes::Pipe
@@ -136,6 +138,7 @@ Resources:
         KinesisStreamParameters:
           BatchSize: 100
           StartingPosition: LATEST
+          MaximumRetryAttempts: 3
       Target: !GetAtt DynamoWriteFunction.Arn
       Enrichment: !GetAtt PipeEnrichFunction.Arn
 
