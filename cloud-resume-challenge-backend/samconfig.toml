@@ -18,7 +18,7 @@ capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_s3 = true
 s3_prefix = "cloud-resume-challenge-backend"
-parameter_overrides = "DeliveryStreamName=\"cloud-resume-visitor-log-stream\" CompressionFormat=\"UNCOMPRESSED\" BufferingIntervalInSeconds=\"300\" BufferingSizeInMBs=\"5\""
+parameter_overrides = "StreamName=\"cloud-resume-visitor-log-stream\" PipeName=\"cloud-resume-visitor-log-pipe\" TableName=\"cloud-resume-visitor-logs\""
 image_repositories = []
 
 [default.package.parameters]
