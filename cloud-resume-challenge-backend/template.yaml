@@ -12,44 +12,43 @@ Globals:
 Parameters:
   DeliveryStreamName:
     Type: String
-    Description: Name of the Data Firehose that sends the logs to S3
+    Description: Name of the Data Firehose that broadcasts visitor logs
     Default: 'cloud-resume-visitor-log-stream'
-  CompressionFormat:
+  EventBridgePipeName:
     Type: String
-    Description: Compression format for S3 files
-    AllowedValues:
-      - UNCOMPRESSED
-      - GZIP
-      - ZIP
-      - Snappy
-    Default: UNCOMPRESSED
-  BufferingIntervalInSeconds:
-    Description: >
-      Buffer incoming data for the specified period of time, in seconds, before delivering it to the destination.
-      See https://docs.aws.amazon.com/firehose/latest/APIReference/API_BufferingHints.html for details.
-    Type: Number
-    MinValue: 60
-    MaxValue: 900
-    Default: 300
-  BufferingSizeInMBs:
-    Description: >
-      Buffer incoming data to the specified size, in MBs, before delivering it to the destination. Note, if you specify a DataTransformationLambdaFunctionArn, you should
-      not set this higher than 6. See https://docs.aws.amazon.com/firehose/latest/dev/data-transformation.html for details.
-    Type: Number
-    MinValue: 1
-    MaxValue: 128
-    Default: 5
+    Description: Name of the EventBridge Pipe that consumes the visitor logs
+    Default: 'cloud-resume-visitor-log-pipe'
+  DynamoDBTableName:
+    Type: String
+    Description: Name of the Dynamo DB table that holds the transformed visitor logs
+    Default: 'cloud-resume-visitor-logs'
 
 Resources:
   Bucket:
     Type: AWS::S3::Bucket
+
+  Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref DynamoDBTableName
+      AttributeDefinitions:
+        - AttributeName: ID
+          AttributeType: S
+        - AttributeName: Epoch
+          AttributeType: N
+      KeySchema:
+        - AttributeName: ID
+          KeyType: HASH
+        - AttributeName: Epoch
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
 
   # IAM Role for the bucket cleanup Lambda function
   EmptyBucketRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: 2012-10-17
         Statement:
           - Effect: Allow
             Principal:
@@ -60,7 +59,7 @@ Resources:
       Policies:
         - PolicyName: EmptyBucketPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: 2012-10-17
             Statement:
               - Effect: Allow
                 Action:
@@ -97,70 +96,12 @@ Resources:
       ServiceToken: !GetAtt EmptyBucketFunction.Arn
       BucketName: !Ref Bucket
 
-  # Lambda function to transform incoming source data
-  EventProcessingFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: event_processing/
-      Handler: app.lambda_handler
-      Runtime: python3.14
-      Architectures:
-        - x86_64
-
-  # IAM Role for the Data Firehose stream to write to S3
-  DeliveryStreamRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - firehose.amazonaws.com
-            Action:
-              - sts:AssumeRole
-            Condition:
-              StringEquals:
-                sts:ExternalId: !Sub ${AWS::AccountId}
-      Policies:
-        - PolicyName: S3ReadWrite
-          PolicyDocument:
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:PutObject
-                Resource:
-                  - !GetAtt Bucket.Arn
-                  - !Sub ${Bucket.Arn}/*
-              - Effect: Allow
-                Action:
-                  - lambda:InvokeFunction
-                Resource:
-                  - !GetAtt EventProcessingFunction.Arn
-
   # Data Firehose stream to transform and deliver the log data to S3
   DeliveryStream:
     Type: AWS::KinesisFirehose::DeliveryStream
     Properties:
       DeliveryStreamName: !Ref DeliveryStreamName
       DeliveryStreamType: DirectPut
-      ExtendedS3DestinationConfiguration:
-        BucketARN: !GetAtt Bucket.Arn
-        RoleARN: !GetAtt DeliveryStreamRole.Arn
-        Prefix: "year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
-        ErrorOutputPrefix: "year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/!{firehose:error-output-type}/"
-        BufferingHints:
-          IntervalInSeconds: !Ref BufferingIntervalInSeconds
-          SizeInMBs: !Ref BufferingSizeInMBs
-        CompressionFormat: !Ref CompressionFormat
-        ProcessingConfiguration:
-          Enabled: True
-          Processors:
-            - Type: Lambda
-              Parameters:
-                - ParameterName: LambdaArn
-                  ParameterValue: !GetAtt EventProcessingFunction.Arn
 
   # Lambda function to send raw API request data to Data Firehose stream
   EventToFirehoseFunction:
@@ -186,7 +127,8 @@ Resources:
             Path: /log
             Method: post
 
-  S3ToDynamoFunction:
+  # Lambda function to write visitor logs to Dynamo DB
+  DynamoUploadFunction:
     Type: AWS::Serverless::Function
     Properties:
       Policies:
@@ -195,13 +137,58 @@ Resources:
           Statement:
             - Effect: Allow
               Action:
-                - s3:GetObject
-              Resource: !GetAtt Bucket.Arn
+                - firehose:PutRecord
+              Resource: !GetAtt DeliveryStream.Arn
       CodeUri: s3_to_dynamo/
       Handler: app.lambda_handler
       Runtime: python3.14
       Architectures:
         - x86_64
+
+  # Lambda function to enrich incoming source data
+  EventEnrichmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: event_enrichment/
+      Handler: app.lambda_handler
+      Runtime: python3.14
+      Architectures:
+        - x86_64
+
+  EventBridgePipeRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: pipes.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: SourcePermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kinesis:GetRecords
+                  - kinesis:ListShards
+                  - kinesis:GetShardIterator
+                Resource: !GetAtt DeliveryStream.Arn
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt EventEnrichmentFunction.Arn
+
+  EventBridgePipe:
+    Type: AWS::Pipes::Pipe
+    Properties:
+      Name: !Ref EventBridgePipeName
+      RoleArn: !GetAtt EventBridgePipeRole.Arn
+      Enrichment: !GetAtt EventEnrichmentFunction.Arn
+      Source: !GetAtt DeliveryStream.Arn
+      Target: !GetAtt DynamoUploadFunction.Arn
 
 Outputs:
   BucketName:
@@ -224,7 +211,3 @@ Outputs:
   EventToFirehoseFunction:
     Description: "Event To Firehose Lambda Function ARN"
     Value: !GetAtt EventToFirehoseFunction.Arn
-
-  S3ToDynamoFunction:
-    Description: "S3 To Dynamo Lambda Function ARN"
-    Value: !GetAtt S3ToDynamoFunction.Arn

@@ -15,8 +15,8 @@ def lambda_handler(event, context):
 
 		try:
 			trans_event = {
-				'request_id': event['requestContext']['requestId'],
-				'request_datetime': event['requestContext']['requestTimeEpoch'],
+				'id': event['requestContext']['requestId'],
+				'epoch': event['requestContext']['requestTimeEpoch'],
 				'ip_address': event['requestContext']['identity'].get('sourceIp'),
 				'user_agent': event['headers'].get('User-Agent'),
 				'referer': event['headers'].get('Referer'),
