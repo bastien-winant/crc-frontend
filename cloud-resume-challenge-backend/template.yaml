@@ -90,6 +90,7 @@ Resources:
               Action:
                 - dynamodb:PutItem
                 - dynamodb:UpdateItem
+                - dynamodb:BatchWriteItem
               Resource: !GetAtt Table.Arn
       CodeUri: write_to_dynamo/
       Handler: app.lambda_handler

@@ -16,10 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 class DynamoDBClient:
-	def __init__(self, dyn_resource):
+	def __init__(self, config, dyn_resource):
 		"""
 		:param dyn_resource: A Boto3 DynamoDB resource.
 		"""
+		self.config = config
 		self.dyn_resource = dyn_resource
 		# The table variable is set during the scenario in the call to
 		# 'exists' if the table exists. Otherwise, it is set by 'create_table'.
@@ -60,8 +61,24 @@ class DynamoDBClient:
 		"""
 		try:
 			with self.table.batch_writer() as writer:
-				for log in logs:
-					writer.put_item(Item=log)
+				for record in logs:
+					payload = base64.b64decode(record['data']).decode('utf-8')
+					data = json.loads(payload)
+
+					writer.put_item(
+						Item={
+							'ID': data['request_id'],
+							'Epoch': data['request_datetime'],
+							'IpAddress': data['ip_address'],
+							'UserAgent': data['user_agent'],
+							'Referer': data['referer'],
+							'Desktop': data['desktop'],
+							'Mobile': data['mobile'],
+							'SmartTV': data['smart_tv'],
+							'Tablet': data['tablet'],
+							'Country': data['country']
+						}
+					)
 		except ClientError as err:
 			logger.error(
 				"Couldn't load data into table %s. Here's why: %s: %s",
@@ -70,6 +87,8 @@ class DynamoDBClient:
 				err.response["Error"]["Message"],
 			)
 			raise
+		else:
+			logger.info(f"Successfully wrote {len(logs)} records to table {self.config.table_name}.")
 
 	def add_log(self, title, year, plot, rating):
 		"""
@@ -110,9 +129,31 @@ class DynamoDBClient:
 		"""
 		try:
 			response = self.table.update_item(
-				Key={"year": year, "title": title},
-				UpdateExpression="set info.rating=:r, info.plot=:p",
-				ExpressionAttributeValues={":r": Decimal(str(rating)), ":p": plot},
+				Key={
+					"ID": data['request_id'],
+					"Epoch": data['request_datetime']
+				},
+				UpdateExpression='''
+					set
+						info.ip_address=:i,
+						info.user_agent=:u,
+						info.referer=:r,
+						info.desktop=:d,
+						info.mobile=:m,
+						info.smart_tv=:s,
+						info.tablet=:t,
+						info.country=:c
+				''',
+				ExpressionAttributeValues={
+					":i": data['ip_address'],
+					":u": data['user_agent'],
+					":r": data['referer'],
+					":d": data['desktop'],
+					":m": data['mobile'],
+					":s": data['smart_tv'],
+					":t": data['tablet'],
+					":c": data['country']
+				},
 				ReturnValues="UPDATED_NEW",
 			)
 		except ClientError as err:
@@ -132,6 +173,7 @@ def lambda_handler(event, context):
 	config = Config()
 	dynamodb = boto3.resource('dynamodb', region_name=config.region)
 
-	client = DynamoDBClient(dynamodb)
+	client = DynamoDBClient(config, dynamodb)
 	client.exists(config.table_name)
 
+	client.write_batch(event)
