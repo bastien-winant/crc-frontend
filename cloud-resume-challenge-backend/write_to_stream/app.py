@@ -45,6 +45,8 @@ class KinesisStreamClient:
 		:param partition_key: The partition key to use for the data.
 		:return: Metadata about the record, including its shard ID and sequence number.
 		"""
+		self.stream_exists_waiter.wait(StreamName=self.config.name)
+
 		try:
 			response = self.kinesis_client.put_record(
 				StreamName=self.name, Data=json.dumps(data), PartitionKey=data['requestContext']['requestId']

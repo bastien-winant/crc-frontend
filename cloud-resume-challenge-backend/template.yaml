@@ -50,6 +50,7 @@ Resources:
             - Effect: Allow
               Action:
                 - kinesis:PutRecord
+                - kinesis:DescribeStream
               Resource: !GetAtt Stream.Arn
       CodeUri: write_to_stream/
       Handler: app.lambda_handler
@@ -88,8 +89,6 @@ Resources:
           Statement:
             - Effect: Allow
               Action:
-                - dynamodb:PutItem
-                - dynamodb:UpdateItem
                 - dynamodb:BatchWriteItem
               Resource: !GetAtt Table.Arn
       CodeUri: write_to_dynamo/
