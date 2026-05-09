@@ -23,7 +23,7 @@ class DynamoDBClient:
 		self.config = config
 		self.dyn_resource = dyn_resource
 		# The table variable is set during the scenario in the call to
-		# 'exists' if the table exists. Otherwise, it is set by 'create_table'.
+		# 'exists' if the table exists. Otherwise, an error is raised
 		self.table = None
 
 	def exists(self, table_name):
@@ -36,15 +36,29 @@ class DynamoDBClient:
 		try:
 			table = self.dyn_resource.Table(table_name)
 		except ClientError as err:
-			logger.error(
-				"Couldn't check for existence of %s. Here's why: %s: %s",
-				table_name,
-				err.response["Error"]["Code"],
-				err.response["Error"]["Message"],
-			)
+			logger.error(f"""
+				Couldn't check for existence of {table_name}.
+				Here's why: {err.response["Error"]["Code"]}: {err.response["Error"]["Message"]}
+			""")
 			raise
 		else:
 			self.table = table
+
+	def write_item(self, writer, item_data):
+		writer.put_item(
+			Item={
+				'ID': item_data['request_id'],
+				'Epoch': item_data['request_datetime'],
+				'IpAddress': item_data['ip_address'],
+				'UserAgent': item_data['user_agent'],
+				'Referer': item_data['referer'],
+				'Desktop': item_data['desktop'],
+				'Mobile': item_data['mobile'],
+				'SmartTV': item_data['smart_tv'],
+				'Tablet': item_data['tablet'],
+				'Country': item_data['country']
+			}
+		)
 
 	def write_batch(self, logs):
 		"""
@@ -64,109 +78,15 @@ class DynamoDBClient:
 				for record in logs:
 					payload = base64.b64decode(record['data']).decode('utf-8')
 					data = json.loads(payload)
-
-					writer.put_item(
-						Item={
-							'ID': data['request_id'],
-							'Epoch': data['request_datetime'],
-							'IpAddress': data['ip_address'],
-							'UserAgent': data['user_agent'],
-							'Referer': data['referer'],
-							'Desktop': data['desktop'],
-							'Mobile': data['mobile'],
-							'SmartTV': data['smart_tv'],
-							'Tablet': data['tablet'],
-							'Country': data['country']
-						}
-					)
+					self.write_item(writer, data)
 		except ClientError as err:
-			logger.error(
-				"Couldn't load data into table %s. Here's why: %s: %s",
-				self.table.name,
-				err.response["Error"]["Code"],
-				err.response["Error"]["Message"],
-			)
+			logger.error(f'''
+				Couldn't load data into table {self.table.name}.
+				Here's why: {err.response["Error"]["Code"]}: {err.response["Error"]["Message"]}
+			''')
 			raise
 		else:
 			logger.info(f"Successfully wrote {len(logs)} records to table {self.config.table_name}.")
-
-	def add_log(self, title, year, plot, rating):
-		"""
-		Adds a log to the table.
-
-		:param title: The title of the log.
-		:param year: The release year of the log.
-		:param plot: The plot summary of the log.
-		:param rating: The quality rating of the log.
-		"""
-		try:
-			self.table.put_item(
-				Item={
-					"year": year,
-					"title": title,
-					"info": {"plot": plot, "rating": Decimal(str(rating))},
-				}
-			)
-		except ClientError as err:
-			logger.error(
-				"Couldn't add log %s to table %s. Here's why: %s: %s",
-				title,
-				self.table.name,
-				err.response["Error"]["Code"],
-				err.response["Error"]["Message"],
-			)
-			raise
-
-	def update_log(self, title, year, rating, plot):
-		"""
-		Updates rating and plot data for a log in the table.
-
-		:param title: The title of the log to update.
-		:param year: The release year of the log to update.
-		:param rating: The updated rating to the give the log.
-		:param plot: The updated plot summary to give the log.
-		:return: The fields that were updated, with their new values.
-		"""
-		try:
-			response = self.table.update_item(
-				Key={
-					"ID": data['request_id'],
-					"Epoch": data['request_datetime']
-				},
-				UpdateExpression='''
-					set
-						info.ip_address=:i,
-						info.user_agent=:u,
-						info.referer=:r,
-						info.desktop=:d,
-						info.mobile=:m,
-						info.smart_tv=:s,
-						info.tablet=:t,
-						info.country=:c
-				''',
-				ExpressionAttributeValues={
-					":i": data['ip_address'],
-					":u": data['user_agent'],
-					":r": data['referer'],
-					":d": data['desktop'],
-					":m": data['mobile'],
-					":s": data['smart_tv'],
-					":t": data['tablet'],
-					":c": data['country']
-				},
-				ReturnValues="UPDATED_NEW",
-			)
-		except ClientError as err:
-			logger.error(
-				"Couldn't update log %s in table %s. Here's why: %s: %s",
-				title,
-				self.table.name,
-				err.response["Error"]["Code"],
-				err.response["Error"]["Message"],
-			)
-			raise
-		else:
-			return response["Attributes"]
 
 def lambda_handler(event, context):
 	# Get the service resource.
