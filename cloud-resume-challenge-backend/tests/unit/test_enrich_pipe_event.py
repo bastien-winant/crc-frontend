@@ -1,72 +1,50 @@
 import json
+import base64
 
 import pytest
 
-from hello_world import app
+from enrich_pipe_event import app
 
 
 @pytest.fixture()
-def apigw_event():
+def recordbatch_event():
 	""" Generates API GW Event"""
 
-	return {
-		"body": '{ "test": "body"}',
-		"resource": "/{proxy+}",
-		"requestContext": {
-			"resourceId": "123456",
-			"apiId": "1234567890",
-			"resourcePath": "/{proxy+}",
-			"httpMethod": "POST",
-			"requestId": "c6af9ac6-7b61-11e6-9a41-93e8deadbeef",
-			"accountId": "123456789012",
-			"identity": {
-				"apiKey": "",
-				"userArn": "",
-				"cognitoAuthenticationType": "",
-				"caller": "",
-				"userAgent": "Custom User Agent String",
-				"user": "",
-				"cognitoIdentityPoolId": "",
-				"cognitoIdentityId": "",
-				"cognitoAuthenticationProvider": "",
-				"sourceIp": "127.0.0.1",
-				"accountId": "",
-			},
-			"stage": "prod",
+	return [
+		{
+			"eventSource": "aws:kinesis",
+			"eventVersion": "1.0",
+			"eventID": "shardId-000000000000:49674352295846748596186013665710907680093913356259295234",
+			"eventName": "aws:kinesis:record",
+			"invokeIdentityArn": "arn:aws:iam::779518747346:role/cloud-resume-challenge-backend-PipeRole-xdyh9No5R6So",
+			"awsRegion": "eu-central-1",
+			"eventSourceARN": "arn:aws:kinesis:eu-central-1:779518747346:stream/cloud-resume-visitor-log-stream",
+			"kinesisSchemaVersion": "1.0",
+			"partitionKey": "1ca3329f-f16b-4a9c-967b-7409555069cb",
+			"sequenceNumber": "49674352295846748596186013665710907680093913356259295234",
+			"data": "eyJyZXNvdXJjZSI6ICIvbG9nIiwgInBhdGgiOiAiL2xvZyIsICJodHRwTWV0aG9kIjogIlBPU1QiLCAiaGVhZGVycyI6IHsiQWNjZXB0IjogIiovKiIsICJDbG91ZEZyb250LUZvcndhcmRlZC1Qcm90byI6ICJodHRwcyIsICJDbG91ZEZyb250LUlzLURlc2t0b3AtVmlld2VyIjogInRydWUiLCAiQ2xvdWRGcm9udC1Jcy1Nb2JpbGUtVmlld2VyIjogImZhbHNlIiwgIkNsb3VkRnJvbnQtSXMtU21hcnRUVi1WaWV3ZXIiOiAiZmFsc2UiLCAiQ2xvdWRGcm9udC1Jcy1UYWJsZXQtVmlld2VyIjogImZhbHNlIiwgIkNsb3VkRnJvbnQtVmlld2VyLUFTTiI6ICIyMDQyNzkiLCAiQ2xvdWRGcm9udC1WaWV3ZXItQ291bnRyeSI6ICJMVSIsICJIb3N0IjogInhhNGpkM3EweWsuZXhlY3V0ZS1hcGkuZXUtY2VudHJhbC0xLmFtYXpvbmF3cy5jb20iLCAiVXNlci1BZ2VudCI6ICJjdXJsLzguNy4xIiwgIlZpYSI6ICIyLjAgOTg2MTdmYTQ0NDYxY2U5OWRiNWQwNDA5MjJhZDM1NzQuY2xvdWRmcm9udC5uZXQgKENsb3VkRnJvbnQpIiwgIlgtQW16LUNmLUlkIjogIlBNV1ZwV1hYcEhVcDEzTWFqNUFjYVp2OS1PWU1mUmszNFpwU3dIU1NacVd5VnBra1dRaEhUZz09IiwgIlgtQW16bi1UcmFjZS1JZCI6ICJSb290PTEtNjlmZTAzOTctMjBmNDE4ZjQ1MTY5NWU3YjA4ZWEzZWJiIiwgIlgtRm9yd2FyZGVkLUZvciI6ICIxNTMuOTQuMTguMTM4LCAzLjE3Mi4xMTkuMTAyIiwgIlgtRm9yd2FyZGVkLVBvcnQiOiAiNDQzIiwgIlgtRm9yd2FyZGVkLVByb3RvIjogImh0dHBzIn0sICJtdWx0aVZhbHVlSGVhZGVycyI6IHsiQWNjZXB0IjogWyIqLyoiXSwgIkNsb3VkRnJvbnQtRm9yd2FyZGVkLVByb3RvIjogWyJodHRwcyJdLCAiQ2xvdWRGcm9udC1Jcy1EZXNrdG9wLVZpZXdlciI6IFsidHJ1ZSJdLCAiQ2xvdWRGcm9udC1Jcy1Nb2JpbGUtVmlld2VyIjogWyJmYWxzZSJdLCAiQ2xvdWRGcm9udC1Jcy1TbWFydFRWLVZpZXdlciI6IFsiZmFsc2UiXSwgIkNsb3VkRnJvbnQtSXMtVGFibGV0LVZpZXdlciI6IFsiZmFsc2UiXSwgIkNsb3VkRnJvbnQtVmlld2VyLUFTTiI6IFsiMjA0Mjc5Il0sICJDbG91ZEZyb250LVZpZXdlci1Db3VudHJ5IjogWyJMVSJdLCAiSG9zdCI6IFsieGE0amQzcTB5ay5leGVjdXRlLWFwaS5ldS1jZW50cmFsLTEuYW1hem9uYXdzLmNvbSJdLCAiVXNlci1BZ2VudCI6IFsiY3VybC84LjcuMSJdLCAiVmlhIjogWyIyLjAgOTg2MTdmYTQ0NDYxY2U5OWRiNWQwNDA5MjJhZDM1NzQuY2xvdWRmcm9udC5uZXQgKENsb3VkRnJvbnQpIl0sICJYLUFtei1DZi1JZCI6IFsiUE1XVnBXWFhwSFVwMTNNYWo1QWNhWnY5LU9ZTWZSazM0WnBTd0hTU1pxV3lWcGtrV1FoSFRnPT0iXSwgIlgtQW16bi1UcmFjZS1JZCI6IFsiUm9vdD0xLTY5ZmUwMzk3LTIwZjQxOGY0NTE2OTVlN2IwOGVhM2ViYiJdLCAiWC1Gb3J3YXJkZWQtRm9yIjogWyIxNTMuOTQuMTguMTM4LCAzLjE3Mi4xMTkuMTAyIl0sICJYLUZvcndhcmRlZC1Qb3J0IjogWyI0NDMiXSwgIlgtRm9yd2FyZGVkLVByb3RvIjogWyJodHRwcyJdfSwgInF1ZXJ5U3RyaW5nUGFyYW1ldGVycyI6IG51bGwsICJtdWx0aVZhbHVlUXVlcnlTdHJpbmdQYXJhbWV0ZXJzIjogbnVsbCwgInBhdGhQYXJhbWV0ZXJzIjogbnVsbCwgInN0YWdlVmFyaWFibGVzIjogbnVsbCwgInJlcXVlc3RDb250ZXh0IjogeyJyZXNvdXJjZUlkIjogIjE0Nmh2cSIsICJyZXNvdXJjZVBhdGgiOiAiL2xvZyIsICJodHRwTWV0aG9kIjogIlBPU1QiLCAiZXh0ZW5kZWRSZXF1ZXN0SWQiOiAiZERWX3ZGd1hsaUFFZXh3PSIsICJyZXF1ZXN0VGltZSI6ICIwOC9NYXkvMjAyNjoxNTozOTowMyArMDAwMCIsICJwYXRoIjogIi9Qcm9kL2xvZyIsICJhY2NvdW50SWQiOiAiNzc5NTE4NzQ3MzQ2IiwgInByb3RvY29sIjogIkhUVFAvMS4xIiwgInN0YWdlIjogIlByb2QiLCAiZG9tYWluUHJlZml4IjogInhhNGpkM3EweWsiLCAicmVxdWVzdFRpbWVFcG9jaCI6IDE3NzgyNTQ3NDM1NzcsICJyZXF1ZXN0SWQiOiAiMWNhMzMyOWYtZjE2Yi00YTljLTk2N2ItNzQwOTU1NTA2OWNiIiwgImlkZW50aXR5IjogeyJjb2duaXRvSWRlbnRpdHlQb29sSWQiOiBudWxsLCAiYWNjb3VudElkIjogbnVsbCwgImNvZ25pdG9JZGVudGl0eUlkIjogbnVsbCwgImNhbGxlciI6IG51bGwsICJzb3VyY2VJcCI6ICIxNTMuOTQuMTguMTM4IiwgInByaW5jaXBhbE9yZ0lkIjogbnVsbCwgImFjY2Vzc0tleSI6IG51bGwsICJjb2duaXRvQXV0aGVudGljYXRpb25UeXBlIjogbnVsbCwgImNvZ25pdG9BdXRoZW50aWNhdGlvblByb3ZpZGVyIjogbnVsbCwgInVzZXJBcm4iOiBudWxsLCAidXNlckFnZW50IjogImN1cmwvOC43LjEiLCAidXNlciI6IG51bGx9LCAiZG9tYWluTmFtZSI6ICJ4YTRqZDNxMHlrLmV4ZWN1dGUtYXBpLmV1LWNlbnRyYWwtMS5hbWF6b25hd3MuY29tIiwgImRlcGxveW1lbnRJZCI6ICI0dTh4ZXQiLCAiYXBpSWQiOiAieGE0amQzcTB5ayJ9LCAiYm9keSI6IG51bGwsICJpc0Jhc2U2NEVuY29kZWQiOiBmYWxzZX0=",
+			"approximateArrivalTimestamp": 1778254746.695
 		},
-		"queryStringParameters": {"foo": "bar"},
-		"headers": {
-			"Via": "1.1 08f323deadbeefa7af34d5feb414ce27.cloudfront.net (CloudFront)",
-			"Accept-Language": "en-US,en;q=0.8",
-			"CloudFront-Is-Desktop-Viewer": "true",
-			"CloudFront-Is-SmartTV-Viewer": "false",
-			"CloudFront-Is-Mobile-Viewer": "false",
-			"X-Forwarded-For": "127.0.0.1, 127.0.0.2",
-			"CloudFront-Viewer-Country": "US",
-			"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-			"Upgrade-Insecure-Requests": "1",
-			"X-Forwarded-Port": "443",
-			"Host": "1234567890.execute-api.us-east-1.amazonaws.com",
-			"X-Forwarded-Proto": "https",
-			"X-Amz-Cf-Id": "aaaaaaaaaae3VYQb9jd-nvCd-de396Uhbp027Y2JvkCPNLmGJHqlaA==",
-			"CloudFront-Is-Tablet-Viewer": "false",
-			"Cache-Control": "max-age=0",
-			"User-Agent": "Custom User Agent String",
-			"CloudFront-Forwarded-Proto": "https",
-			"Accept-Encoding": "gzip, deflate, sdch",
-		},
-		"pathParameters": {"proxy": "/examplepath"},
-		"httpMethod": "POST",
-		"stageVariables": {"baz": "qux"},
-		"path": "/examplepath",
-	}
+		{
+			"eventSource": "aws:kinesis",
+			"eventVersion": "1.0",
+			"eventID": "shardId-000000000000:49674352295846748596186013665710907680093913356259295234",
+			"eventName": "aws:kinesis:record",
+			"invokeIdentityArn": "arn:aws:iam::779518747346:role/cloud-resume-challenge-backend-PipeRole-xdyh9No5R6So",
+			"awsRegion": "eu-central-1",
+			"eventSourceARN": "arn:aws:kinesis:eu-central-1:779518747346:stream/cloud-resume-visitor-log-stream",
+			"kinesisSchemaVersion": "1.0",
+			"partitionKey": "1ca3329f-f16b-4a9c-967b-7409555069cb",
+			"sequenceNumber": "49674352295846748596186013665710907680093913356259295234",
+			"data": "eyJyZXNvdXJjZSI6ICIvbG9nIiwgInBhdGgiOiAiL2xvZyIsICJodHRwTWV0aG9kIjogIlBPU1QiLCAiaGVhZGVycyI6IHsiQWNjZXB0IjogIiovKiIsICJDbG91ZEZyb250LUZvcndhcmRlZC1Qcm90byI6ICJodHRwcyIsICJDbG91ZEZyb250LUlzLURlc2t0b3AtVmlld2VyIjogInRydWUiLCAiQ2xvdWRGcm9udC1Jcy1Nb2JpbGUtVmlld2VyIjogImZhbHNlIiwgIkNsb3VkRnJvbnQtSXMtU21hcnRUVi1WaWV3ZXIiOiAiZmFsc2UiLCAiQ2xvdWRGcm9udC1Jcy1UYWJsZXQtVmlld2VyIjogImZhbHNlIiwgIkNsb3VkRnJvbnQtVmlld2VyLUFTTiI6ICIyMDQyNzkiLCAiQ2xvdWRGcm9udC1WaWV3ZXItQ291bnRyeSI6ICJMVSIsICJIb3N0IjogInhhNGpkM3EweWsuZXhlY3V0ZS1hcGkuZXUtY2VudHJhbC0xLmFtYXpvbmF3cy5jb20iLCAiVXNlci1BZ2VudCI6ICJjdXJsLzguNy4xIiwgIlZpYSI6ICIyLjAgOTg2MTdmYTQ0NDYxY2U5OWRiNWQwNDA5MjJhZDM1NzQuY2xvdWRmcm9udC5uZXQgKENsb3VkRnJvbnQpIiwgIlgtQW16LUNmLUlkIjogIlBNV1ZwV1hYcEhVcDEzTWFqNUFjYVp2OS1PWU1mUmszNFpwU3dIU1NacVd5VnBra1dRaEhUZz09IiwgIlgtQW16bi1UcmFjZS1JZCI6ICJSb290PTEtNjlmZTAzOTctMjBmNDE4ZjQ1MTY5NWU3YjA4ZWEzZWJiIiwgIlgtRm9yd2FyZGVkLUZvciI6ICIxNTMuOTQuMTguMTM4LCAzLjE3Mi4xMTkuMTAyIiwgIlgtRm9yd2FyZGVkLVBvcnQiOiAiNDQzIiwgIlgtRm9yd2FyZGVkLVByb3RvIjogImh0dHBzIn0sICJtdWx0aVZhbHVlSGVhZGVycyI6IHsiQWNjZXB0IjogWyIqLyoiXSwgIkNsb3VkRnJvbnQtRm9yd2FyZGVkLVByb3RvIjogWyJodHRwcyJdLCAiQ2xvdWRGcm9udC1Jcy1EZXNrdG9wLVZpZXdlciI6IFsidHJ1ZSJdLCAiQ2xvdWRGcm9udC1Jcy1Nb2JpbGUtVmlld2VyIjogWyJmYWxzZSJdLCAiQ2xvdWRGcm9udC1Jcy1TbWFydFRWLVZpZXdlciI6IFsiZmFsc2UiXSwgIkNsb3VkRnJvbnQtSXMtVGFibGV0LVZpZXdlciI6IFsiZmFsc2UiXSwgIkNsb3VkRnJvbnQtVmlld2VyLUFTTiI6IFsiMjA0Mjc5Il0sICJDbG91ZEZyb250LVZpZXdlci1Db3VudHJ5IjogWyJMVSJdLCAiSG9zdCI6IFsieGE0amQzcTB5ay5leGVjdXRlLWFwaS5ldS1jZW50cmFsLTEuYW1hem9uYXdzLmNvbSJdLCAiVXNlci1BZ2VudCI6IFsiY3VybC84LjcuMSJdLCAiVmlhIjogWyIyLjAgOTg2MTdmYTQ0NDYxY2U5OWRiNWQwNDA5MjJhZDM1NzQuY2xvdWRmcm9udC5uZXQgKENsb3VkRnJvbnQpIl0sICJYLUFtei1DZi1JZCI6IFsiUE1XVnBXWFhwSFVwMTNNYWo1QWNhWnY5LU9ZTWZSazM0WnBTd0hTU1pxV3lWcGtrV1FoSFRnPT0iXSwgIlgtQW16bi1UcmFjZS1JZCI6IFsiUm9vdD0xLTY5ZmUwMzk3LTIwZjQxOGY0NTE2OTVlN2IwOGVhM2ViYiJdLCAiWC1Gb3J3YXJkZWQtRm9yIjogWyIxNTMuOTQuMTguMTM4LCAzLjE3Mi4xMTkuMTAyIl0sICJYLUZvcndhcmRlZC1Qb3J0IjogWyI0NDMiXSwgIlgtRm9yd2FyZGVkLVByb3RvIjogWyJodHRwcyJdfSwgInF1ZXJ5U3RyaW5nUGFyYW1ldGVycyI6IG51bGwsICJtdWx0aVZhbHVlUXVlcnlTdHJpbmdQYXJhbWV0ZXJzIjogbnVsbCwgInBhdGhQYXJhbWV0ZXJzIjogbnVsbCwgInN0YWdlVmFyaWFibGVzIjogbnVsbCwgInJlcXVlc3RDb250ZXh0IjogeyJyZXNvdXJjZUlkIjogIjE0Nmh2cSIsICJyZXNvdXJjZVBhdGgiOiAiL2xvZyIsICJodHRwTWV0aG9kIjogIlBPU1QiLCAiZXh0ZW5kZWRSZXF1ZXN0SWQiOiAiZERWX3ZGd1hsaUFFZXh3PSIsICJyZXF1ZXN0VGltZSI6ICIwOC9NYXkvMjAyNjoxNTozOTowMyArMDAwMCIsICJwYXRoIjogIi9Qcm9kL2xvZyIsICJhY2NvdW50SWQiOiAiNzc5NTE4NzQ3MzQ2IiwgInByb3RvY29sIjogIkhUVFAvMS4xIiwgInN0YWdlIjogIlByb2QiLCAiZG9tYWluUHJlZml4IjogInhhNGpkM3EweWsiLCAicmVxdWVzdFRpbWVFcG9jaCI6IDE3NzgyNTQ3NDM1NzcsICJyZXF1ZXN0SWQiOiAiMWNhMzMyOWYtZjE2Yi00YTljLTk2N2ItNzQwOTU1NTA2OWNiIiwgImlkZW50aXR5IjogeyJjb2duaXRvSWRlbnRpdHlQb29sSWQiOiBudWxsLCAiYWNjb3VudElkIjogbnVsbCwgImNvZ25pdG9JZGVudGl0eUlkIjogbnVsbCwgImNhbGxlciI6IG51bGwsICJzb3VyY2VJcCI6ICIxNTMuOTQuMTguMTM4IiwgInByaW5jaXBhbE9yZ0lkIjogbnVsbCwgImFjY2Vzc0tleSI6IG51bGwsICJjb2duaXRvQXV0aGVudGljYXRpb25UeXBlIjogbnVsbCwgImNvZ25pdG9BdXRoZW50aWNhdGlvblByb3ZpZGVyIjogbnVsbCwgInVzZXJBcm4iOiBudWxsLCAidXNlckFnZW50IjogImN1cmwvOC43LjEiLCAidXNlciI6IG51bGx9LCAiZG9tYWluTmFtZSI6ICJ4YTRqZDNxMHlrLmV4ZWN1dGUtYXBpLmV1LWNlbnRyYWwtMS5hbWF6b25hd3MuY29tIiwgImRlcGxveW1lbnRJZCI6ICI0dTh4ZXQiLCAiYXBpSWQiOiAieGE0amQzcTB5ayJ9LCAiYm9keSI6IG51bGwsICJpc0Jhc2U2NEVuY29kZWQiOiBmYWxzZX0=",
+			"approximateArrivalTimestamp": 1778254746.695
+		}
+	]
 
 
-def test_lambda_handler(apigw_event):
+def test_lambda_handler(recordbatch_event):
 
-	ret = app.lambda_handler(apigw_event, "")
-	data = json.loads(ret["body"])
+	ret = app.lambda_handler(recordbatch_event, "")
 
-	assert ret["statusCode"] == 200
-	assert "message" in ret["body"]
-	assert data["message"] == "hello world"
+	assert type(ret) == list
+	assert len(ret) == len(recordbatch_event)
