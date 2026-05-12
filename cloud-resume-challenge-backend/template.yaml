@@ -12,7 +12,7 @@ Globals:
 Parameters:
   StreamName:
     Type: String
-    Description: Name of the Data Firehose that broadcasts visitor logs
+    Description: Name of the Kinesis Stream that broadcasts visitor logs
     Default: 'cloud-resume-visitor-log-stream'
   PipeName:
     Type: String
@@ -163,14 +163,14 @@ Outputs:
   TableArn:
     Description: DynamoDB Table ARN
     Value: !GetAtt Table.Arn
-#
-#  EventToFirehoseApi:
-#    Description: API Gateway endpoint URL for Prod stage for Event To Firehose function
-#    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/log/"
-#  EventToFirehoseFunction:
-#    Description: Data Firehose write function ARN
-#    Value: !GetAtt EventToFirehoseFunction.Arn
-#
-#  DynamoUploadFunction:
-#    Description: Dynamo DB upload function ARN
-#    Value: !GetAtt DynamoUploadFunction.Arn
+
+  EventToStreamApi:
+    Description: API Gateway endpoint URL for Prod stage for Stream Write function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/log/"
+  EventToStreamFunction:
+    Description: Kinesis Stream Write function ARN
+    Value: !GetAtt StreamWriteFunction.Arn
+
+  DynamoUploadFunction:
+    Description: Dynamo DB upload function ARN
+    Value: !GetAtt DynamoWriteFunction.Arn

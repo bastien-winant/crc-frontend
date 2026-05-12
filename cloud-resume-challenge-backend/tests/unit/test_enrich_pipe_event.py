@@ -8,7 +8,7 @@ from enrich_pipe_event import app
 
 @pytest.fixture()
 def recordbatch_event():
-	""" Generates API GW Event"""
+	""" Generates Batch Kinesis Stream Event"""
 
 	return [
 		{
