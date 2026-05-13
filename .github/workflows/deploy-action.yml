@@ -24,6 +24,8 @@ jobs:
     - name: Copy files to the test website with the AWS CLI
       run: |
         aws s3 sync ./cloud-resume-challenge-frontend s3://cloud-resume-challenge-frontend-779518747346-eu-central-1-an
+    
+    - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
 
     # - name: Configure AWS credentials from Production account
     #   uses: aws-actions/configure-aws-credentials@v1
