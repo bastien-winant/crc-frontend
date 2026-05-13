@@ -18,19 +18,19 @@ jobs:
     - name: Configure AWS credentials from Test account
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        role-to-assume: arn:aws:iam::111111111111:role/my-github-actions-role-test
-        aws-region: us-east-1
+        role-to-assume: arn:aws:iam::779518747346:role/GitHubOIDC
+        aws-region: eu-central-1
 
     - name: Copy files to the test website with the AWS CLI
       run: |
-        aws s3 sync . s3://my-s3-test-website-bucket
+        aws s3 sync ./cloud-resume-challenge-frontend s3://cloud-resume-challenge-frontend-779518747346-eu-central-1-an
 
-    - name: Configure AWS credentials from Production account
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        role-to-assume: arn:aws:iam::222222222222:role/my-github-actions-role-prod
-        aws-region: us-west-2
+    # - name: Configure AWS credentials from Production account
+    #   uses: aws-actions/configure-aws-credentials@v1
+    #   with:
+    #     role-to-assume: arn:aws:iam::222222222222:role/my-github-actions-role-prod
+    #     aws-region: us-west-2
 
-    - name: Copy files to the production website with the AWS CLI
-      run: |
-        aws s3 sync . s3://my-s3-prod-website-bucket
+    # - name: Copy files to the production website with the AWS CLI
+    #   run: |
+    #     aws s3 sync . s3://my-s3-prod-website-bucket
